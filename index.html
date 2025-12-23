@@ -1,0 +1,961 @@
+
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บันทึกนักล่าท้าผี: Phasmophobia Research Journal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Warm Neutrals (Journal/Paper Theme). Background: #f3f4f6 (Cool Gray 100) -> #fdfbf7 (Warm Paper). Accents: #1f2937 (Ink Black), #b91c1c (Danger Red). -->
+    <!-- Application Structure Plan:
+        1. Header: Immersive "Journal" branding.
+        2. Dashboard Layout (Grid):
+           - Left Column (Investigation): Evidence Filters & Dynamic Ghost List. This mimics the core gameplay loop of filtering possibilities.
+           - Right Column (Analysis): Detailed Ghost Profile (Content) & Data Visualization (Charts).
+        3. Key Interactions:
+           - Toggle Evidence: Instantly filters the ghost list.
+           - Select Ghost: Updates the Profile view and redraws the Radar Chart (Attributes) and updates text.
+           - Comparative Section: A Bar Chart at the bottom comparing Hunting Thresholds (Sanity).
+        4. Rationale: Users need to quickly identify ghosts based on evidence found (Task-Oriented). Once identified, they need survival data (Strengths/Weaknesses) immediately visible without navigating away.
+    -->
+
+    <style>
+		body {
+    font-family: 'Sarabun', sans-serif;
+    /* แก้ไขบรรทัดด้านล่างนี้ */
+    background-image: linear-gradient(rgba(3, 3, 3, 0.8), rgba(3, 3, 3, 0.8)), url('https://cdn.discordapp.com/attachments/1424038749624471814/1435994434499252335/IMG20251014111401.jpg?ex=694bf408&is=694aa288&hm=feb652adf75656033eeb65ece5e993b6ec856eff5be476a1e3e232756fe11685&');
+    background-size: cover;
+    background-attachment: fixed;
+    background-position: center;
+    color: #ff5800;
+}
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #fdfbf7; /* Warm Paper Background */
+            color: #ff5800;
+        }
+        .journal-paper {
+            background-color: #ffffff;
+            background-image: linear-gradient(#f3f4f6 1px, transparent 1px);
+            background-size: 20px 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .ghost-card {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .ghost-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #b91c1c;
+        }
+        .ghost-card.active {
+            background-color: #fee2e2;
+            border-left: 4px solid #b91c1c;
+        }
+        .evidence-btn {
+            transition: all 0.2s;
+        }
+        .evidence-btn.selected {
+            background-color: #ff5800;
+            color: #ffffff;
+            border-color: #ff5800;
+        }
+        .evidence-btn.excluded {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+        
+        /* Chart Container Styling per Requirements */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px; /* Max width constraint */
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        
+        /* Custom Scrollbar for list */
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+/* Dark Mode Overrides - เพิ่ม !important เพื่อทับคลาส Tailwind */
+body.dark-mode {
+    background-color: #1a1a1a !important;
+    color: #d4e157  !important;
+}
+
+.dark-mode .journal-paper {
+    background-color: #555555 !important;
+    background-image: linear-gradient(#333333 1px, transparent 1px) !important;
+    border-color: #f7e957  !important;
+    color: #d4e157  !important;
+}
+
+/* บังคับให้หัวข้อและตัวหนังสือทุกชนิดเป็นสีขาว */
+body.dark-mode h1, 
+body.dark-mode h2, 
+body.dark-mode h3, 
+body.dark-mode h4, 
+body.dark-mode p, 
+body.dark-mode span,
+body.dark-mode div:not(.bg-gray-900) {
+    color: #d4e157  !important;
+}
+
+
+.dark-mode .ghost-card {
+    background-color: #2d2d2d !important;
+    border-color: #f7e957  !important;
+}
+
+.dark-mode .ghost-card:hover {
+    background-color: #3d3d3d !important;
+}
+
+.dark-mode .evidence-btn {
+    background-color: #333333 !important;
+    border-color: #4b5563 !important;
+    color: #ffffff !important;
+}
+
+.dark-mode .evidence-btn.selected {
+    background-color: #b91c1c !important;
+    border-color: #ef4444 !important;
+    color: #ffffff !important;
+}
+
+.dark-mode .bg-gray-50 {
+    background-color: #333333 !important;
+}
+
+/* ปรับสีตัวอักษรในส่วนรายละเอียดผี (Strength/Weakness) */
+body.dark-mode #ghost-strength,
+body.dark-mode #ghost-weakness,
+body.dark-mode #ghost-desc {
+    color: #e5e7eb !important;
+}    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <!-- Header Section -->
+    <header class="max-w-7xl mx-auto mb-8 text-center md:text-left border-b-2 border-gray-800 pb-4">
+        <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 mb-2">
+            👻 บันทึกนักล่าท้าผี (Ghost Journal)
+			<div class="flex justify-center md:justify-end mt-4">
+    <button onclick="toggleDarkMode()" id="dark-mode-btn" class="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-full hover:bg-black transition-all">
+        <span id="dark-mode-icon">🌙</span> <span id="dark-mode-text">โหมดมืด</span>
+    </button>
+</div>
+        </h1>
+        <p class="text-lg text-gray-600 max-w-3xl">
+            ฐานข้อมูลเชิงโต้ตอบสำหรับระบุตัวตนวิญญาณ จุดแข็ง จุดอ่อน และข้อมูลเชิงลึกเพื่อการเอาชีวิตรอด เลือกหลักฐานที่พบเพื่อเริ่มการวิเคราะห์
+        </p>
+    </header>
+
+    <!-- Main Application Grid -->
+    <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- LEFT COLUMN: Investigation (Filters & List) -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- Evidence Filter Panel -->
+            <div class="journal-paper p-6 rounded-lg border border-gray-200">
+                <div class="mb-4">
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <span>🔍</span> หลักฐานที่พบ (Evidence)
+                    </h2>
+                    <p class="text-sm text-gray-500 mt-1">เลือกหลักฐานเพื่อกรองรายชื่อผีที่เป็นไปได้</p>
+                </div>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="evidence-grid">
+                    <!-- Evidence buttons generated by JS -->
+                </div>
+                
+                <div class="mt-4 flex justify-between items-center">
+                    <span class="text-sm font-semibold text-red-600" id="match-count">พบ 24 ตน</span>
+                    <button onclick="resetFilters()" class="text-sm text-gray-500 hover:text-gray-900 underline">รีเซ็ตข้อมูล</button>
+                </div>
+            </div>
+
+            <!-- Ghost List -->
+            <div class="gray-600 p-6 rounded-lg border border-gray-200 flex-1 flex flex-col h-[500px]">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <span>📋</span> รายชื่อวิญญาณ (Ghost Directory)
+                </h2>
+                <div class="overflow-y-auto custom-scroll flex-1 pr-2 space-y-2" id="ghost-list">
+                    <!-- Ghost cards generated by JS -->
+                    <div class="text-center py-10 text-gray-400">กำลังโหลดข้อมูล...</div>
+                </div>
+				<div class="gray-600 p-6 rounded-lg border border-gray-200 mt-6">
+    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+        <span>🎤</span> คำพูดท้าทาย (Voice Commands)
+    </h2>
+    <div class="space-y-3">
+        <div>
+            <p class="text-xs font-bold text-Gray-500 uppercase">สุ่มกิจกรรม / Spirit Box</p>
+            <ul class="text-sm space-y-1 mt-1">
+                <li class="bg-gray-50 p-2 rounded border-l-4 border-blue-400">"Where are you?" (คุณอยู่ที่ไหน)</li>
+                <li class="bg-gray-50 p-2 rounded border-l-4 border-blue-400">"Give us a sign" (ขอสัญญาณหน่อย)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-blue-400">"Is there anyone here?" (มีใครอยู่ไหม)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-blue-400">"Anybody in here?" (มีใครอยู่ในนี้หรือเปล่า)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-blue-400">"Talk to me." (คุยกับฉันหน่อย)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-blue-400">"Should we leave?" (เราควรออกไปไหม)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-blue-400">"Are you crazy?" (คุณบ้าหรือเปล่า)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-blue-400">"Are you a child?" (คุณเป็นเด็กใช่ไหม)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-blue-400">"What is your age?" (คุณอายุเท่าไหร่)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-blue-400">"What is your location?" (คุณอยู่ตรงไหน)</li>				
+            </ul>
+        </div>
+        <div>
+            <p class="text-xs font-bold text-Gray-500 uppercase">กระตุ้นความโกรธ (Aggravate)</p>
+            <ul class="text-sm space-y-1 mt-1">
+                <li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Show yourself" (ปรากฏตัวออกมา)</li>
+                <li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Are you here?" (คุณอยู่ที่นี่ไหม)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Make a noise." (ทำเสียงหน่อย)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Throw something." (ขว้างของให้ดูหน่อย)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Open a door." (เปิดประตูสิ)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Turn on/off the light." (เปิด/ปิดไฟสิ)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Knock on something." (เคาะอะไรสักอย่างสิ)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Ring the phone." (โทรศัพท์มาหน่อย)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"I'm lonely." (ฉันเหงาจัง - ใช้เรียกผีบางประเภท)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"I am not afraid." (ฉันไม่กลัวแกหรอก)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"You are weak." (แกมันอ่อนแอ)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"You are pathetic." (แกมันน่าเวทนา)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Come and get me." (มาจับฉันให้ได้สิ)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Catch me if you can." (แน่จริงก็จับให้ได้สิ)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Do something!" (ทำอะไรสักอย่างสิโว้ย!)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Scream!" (กรีดร้องออกมาสิ!)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-red-400">"Show me." (โชว์ตัวออกมา!)</li>
+            </ul>
+        </div>
+		<div>
+            <p class="text-xs font-bold text-Gray-500 uppercase">คำถามเพิ่มเติมสำหรับกระดาน Ouija (Advanced Ouija)</p>
+            <ul class="text-sm space-y-1 mt-1">
+                <li class="bg-gray-50 p-2 rounded border-l-4 border-yellow-400">"How many people are in this room?" (มีคนอยู่ในห้องนี้กี่คน - ใช้เช็คว่ามีผีอยู่ด้วยไหม)</li>
+                <li class="bg-gray-50 p-2 rounded border-l-4 border-yellow-400">"How many people did you kill?" (คุณฆ่าคนไปกี่คนแล้ว)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-yellow-400">"How long have you been dead?" (คุณตายมานานแค่ไหนแล้ว)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-yellow-400">"What is the name of the person you killed?" (คนที่คุณฆ่าชื่ออะไร)</li>
+				<li class="bg-gray-50 p-2 rounded border-l-4 border-yellow-400">"Am I insane?" (ฉันบ้าหรือยัง - เช็คค่า Sanity แบบอ้อมๆ)</li>
+            </ul>
+        </div>
+        <p class="text-[10px] text-gray-400 mt-2 italic">* ใช้ได้ผลดีเมื่ออยู่คนเดียวในห้องมืด หรือใช้ Spirit Box</p>
+    </div>
+</div>
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: Analysis (Detail Profile & Charts) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- Intro/Context for Details -->
+            <div id="detail-placeholder" class="journal-paper p-10 rounded-lg border border-gray-200 text-center flex flex-col items-center justify-center h-full min-h-[400px]">
+                <span class="text-6xl mb-4 opacity-20">👻</span>
+                <h3 class="text-2xl font-bold text-gray-400">เลือกผีจากรายการด้านซ้าย</h3>
+                <p class="text-gray-500 mt-2">เพื่อดูข้อมูลเชิงลึก จุดแข็ง จุดอ่อน และกราฟวิเคราะห์พฤติกรรม</p>
+            </div>
+
+            <!-- Active Detail View (Hidden initially) -->
+            <div id="detail-view" class="hidden flex flex-col gap-6">
+                
+                <!-- Ghost Profile Card -->
+                <div class="journal-paper p-6 rounded-lg border border-gray-200 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                        <span class="text-9xl">💀</span>
+                    </div>
+                    
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-start border-b border-gray-300 pb-4 mb-4">
+                            <div>
+                                <h2 class="text-4xl font-bold text-gray-900" id="ghost-name">Spirit</h2>
+                                <p class="text-gray-600 italic mt-1" id="ghost-desc">วิญญาณทั่วไปที่พบได้บ่อย...</p>
+                            </div>
+                            <div class="bg-gray-900 text-white px-3 py-1 rounded text-sm font-mono" id="sanity-threshold">
+                                Hunt: <50%
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Text Details -->
+                            <div class="space-y-4">
+                                <div>
+                                    <h4 class="font-bold text-green-900 flex items-center gap-2">
+                                        <span>🛡️</span> จุดแข็ง (Strength)
+                                    </h4>
+                                    <p class="text-sm text-gray-700 leading-relaxed" id="ghost-strength">-</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-red-700 flex items-center gap-2">
+                                        <span>⚠️</span> จุดอ่อน (Weakness)
+                                    </h4>
+                                    <p class="text-sm text-gray-700 leading-relaxed" id="ghost-weakness">-</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-blue-700 flex items-center gap-2">
+                                        <span>💡</span> หลักฐาน (Evidence)
+                                    </h4>
+                                    <div class="flex flex-wrap gap-2 mt-2" id="ghost-evidence-tags">
+                                        <!-- Tags injected via JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Radar Chart Container -->
+                            <div class="flex flex-col items-center justify-center bg-gray-50 rounded-lg p-2">
+                                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">พฤติกรรม (Behavior Analysis)</h4>
+                                <div class="chart-container">
+                                    <canvas id="radarChart"></canvas>
+                                </div>
+                                <p class="text-xs text-center text-gray-400 mt-2">ประเมินจากความก้าวร้าว ความเร็ว และความยากในการระบุ</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparative Analysis (Sanity Bar Chart) -->
+                <div class="journal-paper p-6 rounded-lg border border-gray-200">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold">📊 เปรียบเทียบเกณฑ์สติสัมปชัญญะ (Hunting Threshold)</h3>
+                        <p class="text-sm text-gray-600">
+                            กราฟนี้แสดงระดับ Sanity (%) ของผู้เล่นที่ผีแต่ละตนเริ่มออกล่าเปรียบเทียบกับผีที่เลือก (สีแดง)
+                        </p>
+                    </div>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl mx-auto mt-12 pt-6 border-t border-gray-200 text-center text-gray-500 text-sm pb-8">
+        <p>Phasmophobia Unofficial Guide | สร้างขึ้นเพื่อการศึกษาและการวิเคราะห์ข้อมูลเกม</p>
+    </footer>
+
+    <!-- Logic & Data -->
+    <script>
+        // --- 1. Data Source (Ghost Database) ---
+        const evidenceTypes = [
+            { id: 'emf', label: 'EMF Level 5', icon: '📶' },
+            { id: 'box', label: 'Spirit Box', icon: '📻' },
+            { id: 'finger', label: 'Fingerprints', icon: '🖐️' },
+            { id: 'orb', label: 'Ghost Orb', icon: '🔮' },
+            { id: 'book', label: 'Ghost Writing', icon: '✍️' },
+            { id: 'temp', label: 'Freezing', icon: '❄️' },
+            { id: 'dots', label: 'D.O.T.S.', icon: '🟢' }
+        ];
+
+        const ghosts = [
+            {
+                id: 'spirit',
+                name: 'Spirit',
+                desc: 'สปิริตเป็นผีที่พบได้บ่อยมาก พวกมันมีพลังสูงแต่รักสงบ และจะโจมตีเมื่อจำเป็นเท่านั้น พวกมันจะปกป้องสถานที่เสียชีวิตของตนอย่างถึงที่สุด โดยจะสังหารใครก็ตามที่อยู่เกินเวลาที่ได้รับอนุญาต',
+                evidence: ['emf', 'box', 'book'],
+                strength: 'ไม่มีจุดแข็งที่โดดเด่นเป็นพิเศษ',
+                weakness: 'การใช้ Smudge Stick จะหยุดการล่าของ Spirit ได้นานถึง 180 วินาที (ปกติตัวอื่น 90 วินาที)',
+                huntThreshold: 50,
+                stats: { aggression: 4, speed: 5, stealth: 3 }
+            },
+            {
+                id: 'wraith',
+                name: 'Wraith',
+                desc: 'เป็นหนึ่งในผีที่อันตรายที่สุดที่คุณจะพบได้ และยังเป็นผีชนิดเดียวที่บินได้และบางครั้งก็สามารถเคลื่อนที่ทะลุกำแพงได้',
+                evidence: ['emf', 'box', 'dots'],
+                strength: 'ไม่ทิ้งรอยเท้า (Footsteps) เมื่อเดินผ่านเกลือ และสามารถเทเลพอร์ตหาผู้เล่นได้',
+                weakness: 'จะมีปฏิกิริยารุนแรงกับเกลือ (Salt)',
+                huntThreshold: 50,
+                stats: { aggression: 6, speed: 6, stealth: 8 }
+            },
+            {
+                id: 'phantom',
+                name: 'Phantom',
+                desc: 'เป็นผีที่สามารถเข้าสิงคนเป็นและสร้างความหวาดกลัวให้กับคนรอบข้าง มักจะถูกอัญเชิญออกมาผ่านกระดานผีถ้วยแก้ว (Ouija Boards)',
+                evidence: ['box', 'finger', 'dots'],
+                strength: 'การมองดู Phantom จะลด Sanity ของผู้เล่นลงอย่างรวดเร็ว',
+                weakness: 'การถ่ายรูป Phantom จะทำให้มันหายตัวไปชั่วคราว (แต่ไม่หยุดการล่า)',
+                huntThreshold: 50,
+                stats: { aggression: 5, speed: 5, stealth: 7 }
+            },
+            {
+                id: 'poltergeist',
+                name: 'Poltergeist',
+                desc: 'หนึ่งในผีที่มีชื่อเสียงที่สุด โพลเตอร์ไกสต์ขึ้นชื่อเรื่องการเคลื่อนย้ายสิ่งของรอบตัวเพื่อแพร่กระจายความกลัวไปสู่เหยื่อ',
+                evidence: ['box', 'finger', 'book'],
+                strength: 'สามารถขว้างปาสิ่งของหลายชิ้นพร้อมกัน และลด Sanity ผู้เล่นใกล้เคียง',
+                weakness: 'ไม่มีพลังพิเศษหากในห้องไม่มีสิ่งของให้ขว้างปา',
+                huntThreshold: 50,
+                stats: { aggression: 8, speed: 5, stealth: 2 }
+            },
+            {
+                id: 'banshee',
+                name: 'Banshee',
+                desc: 'นักล่าผู้โดดเดี่ยว จะเลือกเหยื่อเพียงคนเดียวและตามล่าคนนั้นไซเรนนักร้องที่ขึ้นชื่อเรื่องการล่อลวงเหยื่อด้วยเสียงเพลง มันเป็นที่รู้จักในการเลือกเป้าหมายเพียงคนเดียวจากกลุ่มก่อนจะลงมือสังหาร',
+                evidence: ['finger', 'orb', 'dots'],
+                strength: 'จะเล็งเป้าหมายที่ผู้เล่นคนเดียว หากเป้าหมายอยู่ข้างนอก มันจะไม่ฆ่าคนอื่น',
+                weakness: 'มีโอกาสส่งเสียงกรีดร้องผ่าน Parabolic Microphone',
+                huntThreshold: 50,
+                stats: { aggression: 7, speed: 5, stealth: 6 }
+            },
+            {
+                id: 'jinn',
+                name: 'Jinn',
+                desc: 'เป็นผีที่หวงถิ่นและจะโจมตีเมื่อถูกคุกคาม นอกจากนี้ยังเป็นที่รู้กันว่าสามารถเคลื่อนที่ได้ด้วยความเร็วสูงมาก',
+                evidence: ['emf', 'finger', 'temp'],
+                strength: 'เคลื่อนที่เร็วขึ้นเมื่อผู้เล่นอยู่ไกลและไฟฟ้าเปิดอยู่',
+                weakness: 'การปิด Breaker ไฟฟ้าจะทำให้ Jinn ไม่สามารถใช้พลังความเร็วได้',
+                huntThreshold: 50,
+                stats: { aggression: 6, speed: 9, stealth: 4 }
+            },
+            {
+                id: 'mare',
+                name: 'Mare',
+                desc: 'เป็นแหล่งกำเนิดของฝันร้ายทั้งปวง ซึ่งจะทำให้มันมีพลังมากขึ้นเมื่ออยู่ใน ความมืด',
+                evidence: ['box', 'orb', 'book'],
+                strength: 'มีโอกาสออกล่าสูงขึ้นมากในที่มืด (Hunt ที่ 60% Sanity)',
+                weakness: 'การเปิดไฟจะลดโอกาสการออกล่าของ Mare (Hunt ที่ 40% Sanity)',
+                huntThreshold: 60,
+                stats: { aggression: 7, speed: 5, stealth: 5 }
+            },
+            {
+                id: 'revenant',
+                name: 'Revenant',
+                desc: 'เป็นผีที่รุนแรงและโจมตีแบบไม่เลือกหน้า ความเร็วของมันอาจหลอกตาได้ เพราะมันจะเคลื่อนที่ช้าในขณะที่อยู่นิ่ง แต่ทันทีที่มันออกล่า มันจะเคลื่อนที่ได้เร็วอย่างเหลือเชื่อ',
+                evidence: ['orb', 'book', 'temp'],
+                strength: 'เคลื่อนที่ด้วยความเร็วสูงมากหากมองเห็นผู้เล่น',
+                weakness: 'จะเคลื่อนที่ช้าลงอย่างมากหากมองไม่เห็นผู้เล่น (ซ่อนตัว)',
+                huntThreshold: 50,
+                stats: { aggression: 9, speed: 10, stealth: 3 }
+            },
+            {
+                id: 'shade',
+                name: 'Shade',
+                desc: 'วิญญาณขี้อาย มักจะไม่ทำกิจกรรมหากมีคนอยู่รวมกันหลายคน',
+                evidence: ['emf', 'book', 'temp'],
+                strength: 'ค้นหาตัวยากมาก เพราะกิจกรรมน้อย',
+                weakness: 'จะไม่เริ่มออกล่าหากมีผู้เล่นหลายคนอยู่ในห้องเดียวกัน',
+                huntThreshold: 35,
+                stats: { aggression: 2, speed: 5, stealth: 9 }
+            },
+            {
+                id: 'demon',
+                name: 'Demon',
+                desc: 'เป็นผีที่ดุร้ายที่สุดเท่าที่เคยพบมา พวกมันโจมตีโดยไม่มีเหตุผล และดูเหมือนจะสนุกกับการไล่ล่าเหยื่อ',
+                evidence: ['finger', 'book', 'temp'],
+                strength: 'สามารถเริ่มล่าได้ทุกเมื่อ (Hunt ที่ 70% หรือใช้ความสามารถพิเศษที่ 100%)',
+                weakness: 'กลัว Crucifix (รัศมีผลของ Crucifix กว้างขึ้นเป็น 5 เมตร)',
+                huntThreshold: 70,
+                stats: { aggression: 10, speed: 5, stealth: 4 }
+            },
+            {
+                id: 'yurei',
+                name: 'Yurei',
+                desc: 'เป็นวิญญาณที่กลับมายังโลกมนุษย์ มักมีจุดประสงค์เพื่อการแก้แค้นหรือด้วยความโกรธแค้น',
+                evidence: ['orb', 'temp', 'dots'],
+                strength: 'สามารถลด Sanity ของผู้เล่นได้รวดเร็วกว่าปกติ',
+                weakness: 'การใช้ Smudge Stick ในห้องผีจะทำให้มันติดอยู่ในห้องนั้นชั่วคราว',
+                huntThreshold: 50,
+                stats: { aggression: 5, speed: 5, stealth: 5 }
+            },
+            {
+                id: 'oni',
+                name: 'Oni',
+                desc: 'โอนิชอบหลอกหลอนเหยื่อให้กลัวที่สุดเท่าที่จะเป็นไปได้ก่อนจะโจมตี มักพบเห็นพวกมันในรูปแบบทางกายภาพเพื่อเฝ้าสถานที่ที่พวกมันตาย',
+                evidence: ['emf', 'temp', 'dots'],
+                strength: 'มีกิจกรรมเยอะมาก และมองเห็นได้ชัดเจนตอนล่า (กระพริบตัวน้อย)',
+                weakness: 'ไม่สามารถทำ "Airball" (หมอกพุ่งใส่หน้า) ได้ และหาตัวง่ายเพราะ active',
+                huntThreshold: 50,
+                stats: { aggression: 8, speed: 5, stealth: 1 }
+            },
+            {
+                id: 'yokai',
+                name: 'Yokai',
+                desc: 'เป็นผีทั่วไปที่ดึงดูดเข้าหาเสียงของมนุษย์ มักจะพบพวกมันหลอกหลอนอยู่ในบ้านครอบครัว',
+                evidence: ['box', 'orb', 'dots'],
+                strength: 'การพูดคุยใกล้ๆ จะกระตุ้นให้มันโกรธและล่าเร็วขึ้น (Hunt ที่ 80% ได้ถ้าคุย)',
+                weakness: 'ขณะล่า มันจะได้ยินเสียงและรับรู้ตำแหน่งผู้เล่นในระยะสั้นมาก (หูตึง)',
+                huntThreshold: 50, // 80 if talking
+                stats: { aggression: 6, speed: 5, stealth: 5 }
+            },
+            {
+                id: 'hantu',
+                name: 'Hantu',
+                desc: 'เป็นผีที่หายากและเติบโตได้ดีในสภาพอากาศที่หนาวเย็นจัด ความหนาวดูเหมือนจะทำให้พวกมันดุร้ายและมีพลังมากขึ้น',
+                evidence: ['finger', 'orb', 'temp'],
+                strength: 'เคลื่อนที่เร็วในพื้นที่อุณหภูมิต่ำ (ห้องผี/Breaker ดับ)',
+                weakness: 'เคลื่อนที่ช้าลงในพื้นที่อบอุ่น',
+                huntThreshold: 50,
+                stats: { aggression: 6, speed: 7, stealth: 5 }
+            },
+            {
+                id: 'goryo',
+                name: 'Goryo',
+                desc: 'เมื่อโกเรียวเดินผ่านเครื่องฉาย DOTS วิธีเดียวที่จะมองเห็นมันได้คือการดูผ่าน กล้องวิดีโอ เท่านั้น',
+                evidence: ['emf', 'finger', 'dots'],
+                strength: 'หลักฐาน DOTS จะเห็นได้ผ่านกล้องวิดีโอเท่านั้น และต้องไม่มีคนในห้อง',
+                weakness: 'ไม่ค่อยเปลี่ยนห้องโปรด (Favorite Room)',
+                huntThreshold: 50,
+                stats: { aggression: 4, speed: 5, stealth: 8 }
+            },
+            {
+                id: 'myling',
+                name: 'Myling',
+                desc: 'เป็นผีที่ส่งเสียงดังและมีความเคลื่อนไหวสูงมาก มีข่าวลือว่าพวกมันจะเงียบลงเมื่อกำลังออกล่าเหยื่อ',
+                evidence: ['emf', 'finger', 'book'],
+                strength: 'เสียงเดินขณะล่าจะเงียบมาก ทำให้รู้ตัวช้า',
+                weakness: 'ส่งเสียงร้องผ่าน Parabolic Mic บ่อยกว่าปกติ',
+                huntThreshold: 50,
+                stats: { aggression: 5, speed: 5, stealth: 9 }
+            },
+			{
+                id: 'Obambo',
+                name: 'Obambo',
+                desc: 'เป็นวิญญาณของคนที่ไม่ได้รับการทำพิธีศพอย่างถูกต้อง มีนิสัยเอาแน่เอานอนไม่ได้และระแวดระวังตัว โดยจะสลับไปมาระหว่างสถานะสงบและดุร้าย',
+                evidence: ['orb', 'finger', 'dots'],
+                strength: 'ในขณะที่ดุร้าย Obambo จะเริ่มออกล่าได้เร็วขึ้น',
+                weakness: 'ในขณะที่สงบ Obambo จะเริ่มล่าช้าลงและติดตามตัวได้ง่ายขึ้น',
+                huntThreshold: 50,
+                stats: { aggression: 5, speed: 5, stealth: 9 }
+            },
+            {
+                id: 'onryo',
+                name: 'Onryo',
+                desc: 'มักถูกเรียกว่า "วิญญาณพยาบาท" มันจะขโมยวิญญาณจากร่างของเหยื่อที่กำลังจะตายเพื่อแก้แค้น ผีชนิดนี้ กลัวไฟทุกชนิด และจะพยายามทำทุกอย่างเพื่อให้อยู่ห่างจากไฟ',
+                evidence: ['box', 'orb', 'temp'],
+                strength: 'การดับไฟ (เทียน) อาจกระตุ้นให้เริ่มการล่าทันทีไม่สน Sanity',
+                weakness: 'เทียนไขทำหน้าที่เหมือน Crucifix ป้องกันการล่าได้',
+                huntThreshold: 60,
+                stats: { aggression: 7, speed: 5, stealth: 5 }
+            },
+            {
+                id: 'thetwins',
+                name: 'The Twins',
+                desc: 'มีรายงานว่าผีพวกนี้ชอบเลียนแบบพฤติกรรมกันเอง และจะสลับกันโจมตีเพื่อทำให้เหยื่อสับสน',
+                evidence: ['emf', 'box', 'temp'],
+                strength: 'ตัวหนึ่งหลอก ตัวหนึ่งจริง หรือออกล่าจากตำแหน่งที่ต่างกัน',
+                weakness: 'มักจะมีการโต้ตอบพร้อมกันสองจุด',
+                huntThreshold: 50,
+                stats: { aggression: 6, speed: 5, stealth: 6 }
+            },
+            {
+                id: 'raiju',
+                name: 'Raiju',
+                desc: 'เป็นอสูรกายที่เติบโตด้วยกระแสไฟฟ้า ปกติจะสงบเสวียน แต่จะเริ่มคลุ้มคลั่งเมื่อได้รับพลังงานมากเกินไป',
+                evidence: ['emf', 'orb', 'dots'],
+                strength: 'เคลื่อนที่เร็วมากหากอยู่ใกล้อุปกรณ์อิเล็กทรอนิกส์ที่เปิดอยู่',
+                weakness: 'รบกวนอุปกรณ์ไฟฟ้าในระยะไกลกว่าปกติ ทำให้รู้ตัวง่าย',
+                huntThreshold: 65,
+                stats: { aggression: 7, speed: 8, stealth: 4 }
+            },
+            {
+                id: 'obake',
+                name: 'Obake',
+                desc: 'เป็นผีจำแลงกายที่น่าสะพรึงกลัว สามารถเปลี่ยนรูปร่างได้หลายแบบ มักจะปรากฏในร่างมนุษย์เพื่อล่อเหยื่อ',
+                evidence: ['emf', 'finger', 'orb'],
+                strength: 'มีโอกาสทิ้งรอยนิ้วมือ 6 นิ้ว (หลักฐานเฉพาะ) และรอยนิ้วมือหายเร็ว',
+                weakness: 'ระหว่างล่า มีโอกาสแปลงร่างกระพริบเป็นโมเดลอื่นชั่วครู่',
+                huntThreshold: 50,
+                stats: { aggression: 5, speed: 5, stealth: 7 }
+            },
+            {
+                id: 'mimic',
+                name: 'The Mimic',
+                desc: 'เป็นผีลึกลับที่จับตัวยาก มีพฤติกรรมเลียนแบบ โดยมันจะสะท้อนคุณลักษณะและพฤติกรรมของผีตนอื่น ๆ รวมถึงผีประเภทอื่นด้วย',
+                evidence: ['box', 'finger', 'temp', 'orb'], // Has 4 evidences (Orb is fake)
+                strength: 'เลียนแบบความสามารถของผีตัวอื่น (เช่น เดินเร็วเหมือน Revenant ชั่วคราว)',
+                weakness: 'จะมี Ghost Orb เป็นหลักฐานที่ 4 (ของปลอม) เสมอ',
+                huntThreshold: 50, // Variable
+                stats: { aggression: 5, speed: 5, stealth: 10 }
+            },
+			{
+                id: 'Dayan',
+                name: 'Dayan',
+                desc: 'เป็นผีลึกลับที่จับตัวยาก มีพฤติกรรมเลียนแบบ โดยมันจะสะท้อนคุณลักษณะและพฤติกรรมของผีตนอื่น ๆ รวมถึงผีประเภทอื่นด้วย',
+                evidence: ['emf', 'orb', 'box'], // Has 4 evidences (Orb is fake)
+                strength: 'เลียนแบบความสามารถของผีตัวอื่น (เช่น เดินเร็วเหมือน Revenant ชั่วคราว)',
+                weakness: 'จะมี Ghost Orb เป็นหลักฐานที่ 4 (ของปลอม) เสมอ',
+                huntThreshold: 50, // Variable
+                stats: { aggression: 5, speed: 5, stealth: 10 }
+            },
+            {
+                id: 'moroi',
+                name: 'Moroi',
+                desc: 'กำเนิดจากวิญญาณของผู้ที่ทนทุกข์ทรมานจากความทารุณอย่างแสนสาหัสในขณะที่มีชีวิตอยู่ ในตอนที่ตายไปแล้ว เธอจะเฝ้าระวังอย่างหนักต่อใครก็ตามที่ "เต้น" (เคลื่อนไหว) เข้ามาใกล้เกินไป',
+                evidence: ['box', 'book', 'temp'],
+                strength: 'ดายันจะแข็งแกร่งขึ้นเพื่อปกป้องตนเองหากมีคน "เต้น" เข้าใกล้เธอมากเกินไป',
+                weakness: 'ดายันจะสูญเสียความแข็งแกร่งหากคนที่อยู่ใกล้เธอยืนอยู่นิ่ง ๆ',
+                huntThreshold: 50,
+                stats: { aggression: 6, speed: 8, stealth: 4 }
+            },
+            {
+                id: 'deogen',
+                name: 'Deogen',
+                desc: 'บางครั้งจะถูกล้อมรอบด้วยหมอกที่ไม่มีวันสิ้นสุด มันหลบหนีเหล่านักล่าผีมานานหลายปี มีรายงานว่ามันสามารถหาเหยื่อที่ซ่อนอยู่ได้แม้จะซ่อนดีแค่ไหนก็ตาม และจะเฝ้าตามล่าจนเหยื่อหมดแรง',
+                evidence: ['box', 'book', 'dots'],
+                strength: 'รู้ตำแหน่งผู้เล่นเสมอ (ซ่อนไม่ได้)',
+                weakness: 'เคลื่อนที่ช้ามากเมื่ออยู่ใกล้ผู้เล่น (สามารถเดินวนหนีได้)',
+                huntThreshold: 40,
+                stats: { aggression: 5, speed: 2, stealth: 1 }
+            },
+			{
+                id: 'Gallu',
+                name: 'Gallu',
+                desc: 'เป็นปิศาจอีกรูปแบบหนึ่ง กัลลูคือเครื่องเตือนใจว่าความตายมาถึงเราทุกคน การใช้อุปกรณ์ป้องกันจะกระตุ้นให้ผีตนนี้โกรธแค้นจนกว่าอุปกรณ์นั้นจะใช้ไม่ได้ผลอีกต่อไป',
+                evidence: ['emf', 'finger', 'box'],
+                strength: 'รการใช้อุปกรณ์ป้องกันจะผลักดันให้ผีเข้าสู่สภาวะคลุ้มคลั่ง และทำให้ประสิทธิภาพของอุปกรณ์ลดลง',
+                weakness: 'เมื่ออยู่ในสภาวะคลุ้มคลั่งจะทำให้กัลลูเหนื่อยล้า ซึ่งส่งผลให้การใช้อุปกรณ์ป้องกันมีประสิทธิภาพมากขึ้น',
+                huntThreshold: 40,
+                stats: { aggression: 5, speed: 2, stealth: 1 }
+            },
+            {
+                id: 'thaye',
+                name: 'Thaye',
+                desc: 'เป็นที่รู้จักว่ามีการแก่ตัวลงอย่างรวดเร็วแม้จะเป็นวิญญาณไปแล้ว จากสิ่งที่เราเรียนรู้มา ดูเหมือนพวกมันจะเสื่อมสภาพเร็วขึ้นเมื่ออยู่ต่อหน้าคนเป็น',
+                evidence: ['orb', 'book', 'dots'],
+                strength: 'ตอนเริ่มเกมจะดุร้าย เร็ว และ Active มาก',
+                weakness: 'เมื่อเวลาผ่านไปจะเชื่องช้าลงและล่าน้อยลง',
+                huntThreshold: 75, // Starts high, lowers over time
+                stats: { aggression: 9, speed: 9, stealth: 3 }
+            }
+        ];
+
+        // --- 2. State Management ---
+        let selectedEvidence = [];
+        let currentGhost = null;
+        let radarChartInstance = null;
+        let barChartInstance = null;
+
+        // --- 3. DOM Elements ---
+        const evidenceGrid = document.getElementById('evidence-grid');
+        const ghostList = document.getElementById('ghost-list');
+        const matchCount = document.getElementById('match-count');
+        const detailPlaceholder = document.getElementById('detail-placeholder');
+        const detailView = document.getElementById('detail-view');
+
+        // --- 4. Initialization ---
+        function init() {
+            renderEvidenceButtons();
+            renderGhostList();
+            renderComparativeChart(); // Initial chart with generic data
+        }
+		function toggleDarkMode() {
+    const body = document.body;
+    const btnText = document.getElementById('dark-mode-text');
+    const btnIcon = document.getElementById('dark-mode-icon');
+    
+    body.classList.toggle('dark-mode');
+    
+    if (body.classList.contains('dark-mode')) {
+        btnText.innerText = 'โหมดสว่าง';
+        btnIcon.innerText = '☀️';
+        localStorage.setItem('theme', 'dark'); // จำโหมดที่เลือกไว้
+    } else {
+        btnText.innerText = 'โหมดมืด';
+        btnIcon.innerText = '🌙';
+        localStorage.setItem('theme', 'light');
+    }
+    
+    // อัปเดตสีกราฟให้เข้ากับโหมด
+    updateChartsTheme();
+}
+
+function updateChartsTheme() {
+    const isDark = document.body.classList.contains('dark-mode');
+    const textColor = isDark ? '#ffffff' : '#666666';
+    
+    // ตั้งค่าเริ่มต้นใหม่ให้ Chart.js
+    Chart.defaults.color = textColor;
+    
+    // ถ้ามีกราฟแสดงอยู่แล้ว ให้สั่ง update
+    if (radarChartInstance) radarChartInstance.update();
+    if (barChartInstance) barChartInstance.update();
+}
+
+// เช็คโหมดเดิมที่ผู้ใช้เคยเลือกไว้ตอนโหลดหน้าเว็บ
+window.addEventListener('load', () => {
+    if (localStorage.getItem('theme') === 'dark') {
+        toggleDarkMode();
+    }
+});
+
+        // --- 5. Logic Functions ---
+
+        // Render Evidence Buttons
+        function renderEvidenceButtons() {
+            evidenceGrid.innerHTML = evidenceTypes.map(ev => `
+                <button 
+                    onclick="toggleEvidence('${ev.id}')"
+                    id="btn-${ev.id}"
+                    class="evidence-btn border border-gray-300 rounded p-3 flex flex-col items-center justify-center gap-1 hover:bg-gray-100 bg-white"
+                >
+                    <span class="text-2xl">${ev.icon}</span>
+                    <span class="text-xs font-semibold text-center">${ev.label}</span>
+                </button>
+            `).join('');
+        }
+
+        // Toggle Evidence Logic
+        window.toggleEvidence = function(id) {
+            const index = selectedEvidence.indexOf(id);
+            const btn = document.getElementById(`btn-${id}`);
+            
+            if (index > -1) {
+                selectedEvidence.splice(index, 1);
+                btn.classList.remove('selected');
+            } else {
+                // Phasmophobia allows 3 evidences max (usually), but let's allow clicking up to 3 freely
+                if(selectedEvidence.length < 3) {
+                    selectedEvidence.push(id);
+                    btn.classList.add('selected');
+                } else {
+                    // Replace the last one logic or just alert? Let's just block > 3 for simplicity
+                    // Actually, better UX: Shake button or do nothing.
+                    // For this app, let's just create a shift logic (remove first, add new)
+                    const removed = selectedEvidence.shift();
+                    document.getElementById(`btn-${removed}`).classList.remove('selected');
+                    selectedEvidence.push(id);
+                    btn.classList.add('selected');
+                }
+            }
+            renderGhostList();
+        };
+
+        // Render Ghost List based on filters
+        function renderGhostList() {
+            const filteredGhosts = ghosts.filter(ghost => {
+                // Check if ghost has ALL selected evidence
+                return selectedEvidence.every(ev => ghost.evidence.includes(ev));
+            });
+
+            matchCount.innerText = `พบ ${filteredGhosts.length} ตน`;
+
+            if (filteredGhosts.length === 0) {
+                ghostList.innerHTML = `<div class="text-center py-10 text-gray-400">ไม่พบวิญญาณที่ตรงกับหลักฐาน<br>ลองลดจำนวนหลักฐานลง</div>`;
+                return;
+            }
+
+            ghostList.innerHTML = filteredGhosts.map(ghost => `
+                <div 
+                    onclick="selectGhost('${ghost.id}')"
+                    id="card-${ghost.id}"
+                    class="ghost-card bg-white p-4 rounded border border-gray-200 flex justify-between items-center group"
+                >
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-lg group-hover:text-red-700">${ghost.name}</h3>
+                        <div class="flex gap-1 mt-1 text-xs text-gray-500">
+                             ${ghost.evidence.map(e => {
+                                 const evObj = evidenceTypes.find(t => t.id === e);
+                                 return `<span class="bg-gray-100 px-1 rounded">${evObj.icon}</span>`;
+                             }).join('')}
+                        </div>
+                    </div>
+                    <div class="text-gray-300 group-hover:text-red-500">
+                        ➤
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.resetFilters = function() {
+            selectedEvidence = [];
+            document.querySelectorAll('.evidence-btn').forEach(btn => btn.classList.remove('selected'));
+            renderGhostList();
+            // Optional: clear detail view? Keep it for reference.
+        };
+
+        // Select Ghost & Show Details
+        window.selectGhost = function(id) {
+            currentGhost = ghosts.find(g => g.id === id);
+            
+            // UI Toggle
+            detailPlaceholder.classList.add('hidden');
+            detailView.classList.remove('hidden');
+
+            // Highlight List Item
+            document.querySelectorAll('.ghost-card').forEach(c => c.classList.remove('active'));
+            document.getElementById(`card-${id}`).classList.add('active');
+
+            // Populate Text
+            document.getElementById('ghost-name').innerText = currentGhost.name;
+            document.getElementById('ghost-desc').innerText = currentGhost.desc;
+            document.getElementById('sanity-threshold').innerText = `Hunt Threshold: ${currentGhost.huntThreshold}%`;
+            document.getElementById('ghost-strength').innerText = currentGhost.strength;
+            document.getElementById('ghost-weakness').innerText = currentGhost.weakness;
+
+            // Populate Evidence Tags
+            const tagsContainer = document.getElementById('ghost-evidence-tags');
+            tagsContainer.innerHTML = currentGhost.evidence.map(evId => {
+                const ev = evidenceTypes.find(e => e.id === evId);
+                return `
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        ${ev.icon} ${ev.label}
+                    </span>
+                `;
+            }).join('');
+
+            // Update Charts
+            updateRadarChart(currentGhost);
+            updateBarChart(currentGhost);
+        };
+
+        // --- 6. Charts Implementation ---
+
+        function updateRadarChart(ghost) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            
+            if (radarChartInstance) {
+                radarChartInstance.destroy();
+            }
+
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Aggression (ดุร้าย)', 'Speed (ความเร็ว)', 'Stealth (ซ่อนเร้น)', 'Evidence Easy (หาง่าย)', 'Danger (อันตราย)'],
+                    datasets: [{
+                        label: ghost.name,
+                        data: [
+                            ghost.stats.aggression,
+                            ghost.stats.speed,
+                            ghost.stats.stealth,
+                            Math.floor(Math.random() * 5) + 5, // Simulation: Evidence ease
+                            (ghost.stats.aggression + ghost.stats.speed) / 2 // Danger calc
+                        ],
+                        backgroundColor: 'rgba(185, 28, 28, 0.2)',
+                        borderColor: 'rgba(185, 28, 28, 1)',
+                        pointBackgroundColor: 'rgba(185, 28, 28, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: '#e5e7eb' },
+                            grid: { color: '#e5e7eb' },
+                            pointLabels: {
+                                font: { size: 10, family: 'Sarabun' },
+                                color: '#4b5563'
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 10,
+                            ticks: { display: false } // Hide numbers for cleaner look
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function renderComparativeChart() {
+            // Initial render with average data or empty
+            const ctx = document.getElementById('barChart').getContext('2d');
+            
+            // Default "Standard" Ghost data
+            const standardThreshold = 50;
+            
+            barChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Standard Ghost', 'Demon', 'Thaye (Early)', 'Mare (Dark)', 'Your Selection'],
+                    datasets: [{
+                        label: 'Hunting Threshold (% Sanity)',
+                        data: [50, 70, 75, 60, 0],
+                        backgroundColor: [
+                            '#9ca3af', '#9ca3af', '#9ca3af', '#9ca3af', '#b91c1c'
+                        ],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y', // Horizontal Bar Chart
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: { display: true, text: '% Sanity (ยิ่งสูงยิ่งอันตราย)' }
+                        },
+                        y: {
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `เริ่มล่าเมื่อ Sanity ต่ำกว่า ${context.raw}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateBarChart(ghost) {
+            if (!barChartInstance) return;
+
+            // Update the last data point (Your Selection)
+            barChartInstance.data.datasets[0].data[4] = ghost.huntThreshold;
+            
+            // Only specific ghosts are interesting for comparison, but we keep the static comparison points (Demon/Thaye) for context
+            // Update labels if needed? No, keep context static for easy comparison.
+            barChartInstance.data.labels[4] = ghost.name;
+            
+            barChartInstance.update();
+        }
+
+        // --- Run Init ---
+        init();
+
+    </script>
+    
+    <!-- Visualization & Content Choices:
+         1. Evidence Filters (Grid of Buttons):
+            - Goal: Inform/Organize.
+            - Method: HTML/JS Buttons.
+            - Interaction: Click to filter the main list.
+            - Justification: This is the core mechanic of the game (process of elimination).
+         
+         2. Ghost List (Scrollable Card List):
+            - Goal: Inform/Navigate.
+            - Method: Dynamic HTML Generation.
+            - Interaction: Click to view details.
+            - Justification: Quick scanning of names and icons is more efficient than a dropdown.
+
+         3. Radar Chart (Chart.js):
+            - Goal: Relationships/Compare.
+            - Method: Canvas Radar Chart.
+            - Interaction: Updates on ghost selection.
+            - Justification: Visualizes abstract stats (Speed vs Aggression) effectively, giving a "shape" to the ghost's behavior.
+
+         4. Sanity Threshold Bar Chart (Chart.js):
+            - Goal: Compare.
+            - Method: Horizontal Bar Chart.
+            - Interaction: Updates the specific ghost bar against static benchmarks.
+            - Justification: Crucial survival info. Knowing a Demon hunts at 70% vs a Shade at 35% is vital context shown best by direct comparison.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. All icons are Unicode. -->
+</body>
+</html>
