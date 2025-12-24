@@ -23,14 +23,28 @@
 
     <style>
 		body {
-    font-family: 'Sarabun', sans-serif;
-    /* แก้ไขบรรทัดด้านล่างนี้ */
-    background-image: linear-gradient(rgba(3, 3, 3, 0.8), rgba(3, 3, 3, 0.8)), url('https://cdn.discordapp.com/attachments/903095583902941225/1453065078902358148/image.png?ex=694c17cf&is=694ac64f&hm=5181c6c6482cd1d1b38369969f50e862a71800b85dfdbcc8ecc589d01d109c8f');
-    background-size: cover;
-    background-attachment: fixed;
-    background-position: center;
-    color: #ff5800;
+    background-image: 
+        url('https://cdn.discordapp.com/attachments/903095583902941225/1453064271763079270/image.png?ex=694cbfcf&is=694b6e4f&hm=59af22f856d1541881206abe63c738721393651f95e7c7c7bcfaf68e252ff420'), /* รูปที่ 1 */
+        url('https://cdn.discordapp.com/attachments/1327227929813454878/1453056900559143192/20251223_230901.jpg?ex=694cb8f1&is=694b6771&hm=073816509953cb386c82ed5a2834c30744fcff5a7674dc6dbe8a8fea5ddc64ef'), /* รูปที่ 2 */
+        linear-gradient(rgba(3, 3, 3, 0.7), rgba(3, 3, 3, 0.7)); /* เลเยอร์สีทับพื้นหลังหลัก */
+
+    /* กำหนดตำแหน่งแยกตามรูป: รูปที่ 1 ไว้ซ้ายบน, รูปที่ 2 ไว้ขวาล่าง */
+    background-position: 
+        top left,      /* ตำแหน่งรูปที่ 1 */
+        bottom right,  /* ตำแหน่งรูปที่ 2 */
+        center;        /* ตำแหน่งของ Gradient */
+
+    /* กำหนดขนาดแยกตามรูป */
+    background-size: 
+        200px auto,    /* ขนาดรูปที่ 1 (กว้าง 200px) */
+        300px auto,    /* ขนาดรูปที่ 2 (กว้าง 300px) */
+        cover;         /* ขนาดของ Gradient ให้เต็มจอ */
+
+    background-repeat: no-repeat; /* ไม่ให้รูปซ้ำวนลูป */
+    background-attachment: fixed; /* ให้พื้นหลังล็อคอยู่กับที่เวลาเลื่อนหน้าจอ */
 }
+}
+
         body {
             font-family: 'Sarabun', sans-serif;
             background-color: #fdfbf7; /* Warm Paper Background */
